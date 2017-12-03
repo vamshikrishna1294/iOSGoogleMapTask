@@ -27,7 +27,7 @@ var currentLocation: CLLocation?
 var mapView: GMSMapView!
 var placesClient: GMSPlacesClient!
 var zoomLevel: Float = 15.0
-
+var localmarker:GMSMarker!
 // A default location to use when location permission is not granted.
 let defaultLocation = CLLocation(latitude: -33.869405, longitude: 151.199)
 var destinationMarker:MyPlaceMarker?
@@ -86,6 +86,15 @@ class ViewController: UIViewController {
             // current loc
             navigationItem.rightBarButtonItem = nil
             
+            if currentLocation != nil  {
+                let path = GMSMutablePath()
+                //Change coordinates
+                path.add((currentLocation?.coordinate)!)
+                let bounds = GMSCoordinateBounds(path: path)
+                let update = GMSCameraUpdate.fit(bounds, withPadding: 50)
+                mapView.animate(with: update)
+             }
+            
             
         }else if sender.selectedSegmentIndex == 1 {
             // Mumbai airport
@@ -141,15 +150,17 @@ extension ViewController: CLLocationManagerDelegate {
         let currentlocation = CLLocationCoordinate2D(latitude: location.coordinate.latitude,
                                                      longitude: location.coordinate.longitude)
         // Creates a marker in the center of the map.
-        let marker = GMSMarker(position: currentlocation)
-        currentLocation = CLLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
+        if localmarker == nil {
+            localmarker = GMSMarker(position: currentlocation)
+        }
         
+        currentLocation = CLLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
         //marker.position = CLLocationCoordinate2D(latitude: -33.86, longitude: 151.20)
-        marker.title = "My Location"
-        marker.snippet = "Hello world"
-        marker.map = mapView
-        marker.icon = GMSMarker.markerImage(with: UIColor.green)
-        marker.tracksInfoWindowChanges = true
+        localmarker.title = "My Location"
+        localmarker.snippet = "Hello world"
+        localmarker.map = mapView
+        localmarker.icon = GMSMarker.markerImage(with: UIColor.green)
+        localmarker.tracksInfoWindowChanges = true
 
         placesClient.currentPlace(callback: { (placeLikelihoodList, error) -> Void in
             if let error = error {
@@ -164,6 +175,10 @@ extension ViewController: CLLocationManagerDelegate {
                     print("Current Place address \(place.formattedAddress)")
                     print("Current Place attributions \(place.attributions)")
                     print("Current PlaceID \(place.placeID)")
+                    
+                    localmarker.title = place.name
+                    localmarker.snippet = place.formattedAddress
+
                 }
             }
         })
@@ -182,13 +197,13 @@ extension ViewController: CLLocationManagerDelegate {
         polyline.strokeWidth = 3.0
         polyline.map = mapView
         
-        let bounds = GMSCoordinateBounds()
-        bounds.includingCoordinate((destinationMarker?.locationCordinate)!)
-        bounds.includingCoordinate((currentLocation?.coordinate)!)
-        let update = GMSCameraUpdate.fit(bounds, withPadding: 100)
+        //let bounds = GMSCoordinateBounds()
+        //bounds.includingCoordinate((destinationMarker?.locationCordinate)!)
+        //bounds.includingCoordinate((currentLocation?.coordinate)!)
+        let bounds = GMSCoordinateBounds(path: path)
+        let update = GMSCameraUpdate.fit(bounds, withPadding: 50)
         mapView.animate(with: update)
-
-    }
+     }
     
     
     
