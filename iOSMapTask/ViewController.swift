@@ -15,10 +15,12 @@ class MyPlaceMarker: NSObject {
     let title:String
     let locationCordinate:CLLocationCoordinate2D
     let zoom:Float
-      init(title:String, locationCordinate:CLLocationCoordinate2D,zoom:Float) {
+    let color:UIColor
+    init(title:String, locationCordinate:CLLocationCoordinate2D,zoom:Float, color:UIColor) {
         self.title  = title
         self.locationCordinate = locationCordinate
         self.zoom = zoom
+        self.color = color
     }
 }
 
@@ -31,7 +33,7 @@ var localmarker:GMSMarker!
 // A default location to use when location permission is not granted.
 let defaultLocation = CLLocation(latitude: -33.869405, longitude: 151.199)
 var destinationMarker:MyPlaceMarker?
-let destinations = [MyPlaceMarker(title: "Mumbai Airport", locationCordinate: CLLocationCoordinate2DMake(19.0896, 72.8656), zoom: 15),MyPlaceMarker(title: "Chennai Airport", locationCordinate: CLLocationCoordinate2DMake(12.9941, 80.1709), zoom: 15)]
+let destinations = [MyPlaceMarker(title: "Mumbai Airport", locationCordinate: CLLocationCoordinate2DMake(19.0896, 72.8656), zoom: 15,color:UIColor.purple),MyPlaceMarker(title: "Chennai Airport", locationCordinate: CLLocationCoordinate2DMake(12.9941, 80.1709), zoom: 15,color:UIColor.orange)]
 
 class ViewController: UIViewController {
 
@@ -43,8 +45,7 @@ class ViewController: UIViewController {
     
      override func viewDidLoad() {
         super.viewDidLoad()
-        
-        
+
         let segment: UISegmentedControl = UISegmentedControl(items: ["My Location", "Mumbai","Chennai"])
         segment.sizeToFit()
         segment.tintColor = UIColor(red:0.99, green:0.00, blue:0.25, alpha:1.00)
@@ -52,7 +53,6 @@ class ViewController: UIViewController {
         self.navigationItem.titleView = segment
         segment.addTarget(self, action:#selector(segmentedControlValueChanged(_:)), for:UIControlEvents.valueChanged)
 
-        
         title = "GoogleMaps - DemoTask"
         // Initialize the location manager.
         locationManager = CLLocationManager()
@@ -103,13 +103,12 @@ class ViewController: UIViewController {
             let marker = GMSMarker(position: (destinationMarker?.locationCordinate)!)
             marker.title = destinationMarker?.title
             marker.map = mapView
-            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Route", style: UIBarButtonItemStyle.plain, target: self, action: #selector(nextMap(_:)))
+            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Route", style: UIBarButtonItemStyle.plain, target: self, action: #selector(routeMap(_:)))
             marker.icon = GMSMarker.markerImage(with: UIColor.red)
 
             
         }else if sender.selectedSegmentIndex == 2 {
             // chennai airport
-            
             destinationMarker = destinations[1]
             mapView.camera = GMSCameraPosition.camera(withTarget: (destinationMarker?.locationCordinate)!, zoom: (destinationMarker?.zoom)!)
             let marker = GMSMarker(position: (destinationMarker?.locationCordinate)!)
@@ -117,7 +116,7 @@ class ViewController: UIViewController {
             marker.map = mapView
             marker.icon = GMSMarker.markerImage(with: UIColor.blue)
 
-            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Route", style: UIBarButtonItemStyle.plain, target: self, action: #selector(nextMap(_:)))
+            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Route", style: UIBarButtonItemStyle.plain, target: self, action: #selector(routeMap(_:)))
 
         }
     }
@@ -186,14 +185,14 @@ extension ViewController: CLLocationManagerDelegate {
         
      }
     
-    @objc func nextMap(_ sender:UIBarButtonItem)
+    @objc func routeMap(_ sender:UIBarButtonItem)
     {
         let path = GMSMutablePath()
         //Change coordinates
         path.add((destinationMarker?.locationCordinate)!)
         path.add((currentLocation?.coordinate)!)
         let polyline = GMSPolyline(path: path)
-        polyline.strokeColor = UIColor.blue
+        polyline.strokeColor = (destinationMarker?.color)!
         polyline.strokeWidth = 3.0
         polyline.map = mapView
         
