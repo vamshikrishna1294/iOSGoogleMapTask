@@ -10,14 +10,11 @@ import UIKit
 import GoogleMaps
 import  GooglePlaces
 
-
 class MyPlaceMarker: NSObject {
     
     let title:String
     let locationCordinate:CLLocationCoordinate2D
     let zoom:Float
-    
-    
       init(title:String, locationCordinate:CLLocationCoordinate2D,zoom:Float) {
         self.title  = title
         self.locationCordinate = locationCordinate
@@ -31,13 +28,9 @@ var mapView: GMSMapView!
 var placesClient: GMSPlacesClient!
 var zoomLevel: Float = 15.0
 
-
-
 // A default location to use when location permission is not granted.
 let defaultLocation = CLLocation(latitude: -33.869405, longitude: 151.199)
-
 var destinationMarker:MyPlaceMarker?
-
 let destinations = [MyPlaceMarker(title: "Mumbai Airport", locationCordinate: CLLocationCoordinate2DMake(19.0896, 72.8656), zoom: 15),MyPlaceMarker(title: "Chennai Airport", locationCordinate: CLLocationCoordinate2DMake(12.9941, 80.1709), zoom: 15)]
 
 class ViewController: UIViewController {
@@ -51,7 +44,16 @@ class ViewController: UIViewController {
      override func viewDidLoad() {
         super.viewDidLoad()
         
-        title = "GoogleMaps - DemoTask "
+        
+        let segment: UISegmentedControl = UISegmentedControl(items: ["My Location", "Mumbai","Chennai"])
+        segment.sizeToFit()
+        segment.tintColor = UIColor(red:0.99, green:0.00, blue:0.25, alpha:1.00)
+        segment.selectedSegmentIndex = 0;
+        self.navigationItem.titleView = segment
+        segment.addTarget(self, action:#selector(segmentedControlValueChanged(_:)), for:UIControlEvents.valueChanged)
+
+        
+        title = "GoogleMaps - DemoTask"
         // Initialize the location manager.
         locationManager = CLLocationManager()
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
@@ -59,7 +61,8 @@ class ViewController: UIViewController {
         locationManager.distanceFilter = 50
         locationManager.startUpdatingLocation()
         locationManager.delegate = self
-        
+        placesClient = GMSPlacesClient.shared()
+
         // Create a map.
         let camera = GMSCameraPosition.camera(withLatitude: defaultLocation.coordinate.latitude,
                                               longitude: defaultLocation.coordinate.longitude,
@@ -76,7 +79,45 @@ class ViewController: UIViewController {
  
 
     }
- }
+    
+    
+    @objc func segmentedControlValueChanged(_ sender:UISegmentedControl) {
+        if sender.selectedSegmentIndex == 0 {
+            // current loc
+            navigationItem.rightBarButtonItem = nil
+            
+            
+        }else if sender.selectedSegmentIndex == 1 {
+            // Mumbai airport
+            destinationMarker = destinations[0]
+            mapView.camera = GMSCameraPosition.camera(withTarget: (destinationMarker?.locationCordinate)!, zoom: (destinationMarker?.zoom)!)
+            let marker = GMSMarker(position: (destinationMarker?.locationCordinate)!)
+            marker.title = destinationMarker?.title
+            marker.map = mapView
+            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Route", style: UIBarButtonItemStyle.plain, target: self, action: #selector(nextMap(_:)))
+            marker.icon = GMSMarker.markerImage(with: UIColor.red)
+
+            
+        }else if sender.selectedSegmentIndex == 2 {
+            // chennai airport
+            
+            destinationMarker = destinations[1]
+            mapView.camera = GMSCameraPosition.camera(withTarget: (destinationMarker?.locationCordinate)!, zoom: (destinationMarker?.zoom)!)
+            let marker = GMSMarker(position: (destinationMarker?.locationCordinate)!)
+            marker.title = destinationMarker?.title
+            marker.map = mapView
+            marker.icon = GMSMarker.markerImage(with: UIColor.blue)
+
+            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Route", style: UIBarButtonItemStyle.plain, target: self, action: #selector(nextMap(_:)))
+
+        }
+    }
+    
+    
+    
+    
+}
+
 
 // Delegates to handle events for the location manager.
 extension ViewController: CLLocationManagerDelegate {
@@ -101,32 +142,56 @@ extension ViewController: CLLocationManagerDelegate {
                                                      longitude: location.coordinate.longitude)
         // Creates a marker in the center of the map.
         let marker = GMSMarker(position: currentlocation)
+        currentLocation = CLLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
+        
         //marker.position = CLLocationCoordinate2D(latitude: -33.86, longitude: 151.20)
         marker.title = "My Location"
         marker.snippet = "Hello world"
         marker.map = mapView
-        marker.icon = GMSMarker.markerImage(with: UIColor.red)
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Next", style: UIBarButtonItemStyle.plain, target: self, action: #selector(nextMap(_:)))
+        marker.icon = GMSMarker.markerImage(with: UIColor.green)
+        marker.tracksInfoWindowChanges = true
+
+        placesClient.currentPlace(callback: { (placeLikelihoodList, error) -> Void in
+            if let error = error {
+                print("Pick Place error: \(error.localizedDescription)")
+                return
+            }
+            
+            if let placeLikelihoodList = placeLikelihoodList {
+                for likelihood in placeLikelihoodList.likelihoods {
+                    let place = likelihood.place
+                    print("Current Place name \(place.name) at likelihood \(likelihood.likelihood)")
+                    print("Current Place address \(place.formattedAddress)")
+                    print("Current Place attributions \(place.attributions)")
+                    print("Current PlaceID \(place.placeID)")
+                }
+            }
+        })
+
         
      }
     
     @objc func nextMap(_ sender:UIBarButtonItem)
     {
-         if destinationMarker == nil {
-            destinationMarker = destinations.first
-            mapView.camera = GMSCameraPosition.camera(withTarget: (destinationMarker?.locationCordinate)!, zoom: (destinationMarker?.zoom)!)
-            let marker = GMSMarker(position: (destinationMarker?.locationCordinate)!)
-            marker.title = destinationMarker?.title
-            marker.map = mapView
+        let path = GMSMutablePath()
+        //Change coordinates
+        path.add((destinationMarker?.locationCordinate)!)
+        path.add((currentLocation?.coordinate)!)
+        let polyline = GMSPolyline(path: path)
+        polyline.strokeColor = UIColor.blue
+        polyline.strokeWidth = 3.0
+        polyline.map = mapView
+        
+        let bounds = GMSCoordinateBounds()
+        bounds.includingCoordinate((destinationMarker?.locationCordinate)!)
+        bounds.includingCoordinate((currentLocation?.coordinate)!)
+        let update = GMSCameraUpdate.fit(bounds, withPadding: 100)
+        mapView.animate(with: update)
 
-         }else{
-            
-            let marker = GMSMarker(position: (destinationMarker?.locationCordinate)!)
-            marker.title = destinationMarker?.title
-            marker.map = mapView
-
-        }
     }
+    
+    
+    
     
     // Handle authorization for the location manager.
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
